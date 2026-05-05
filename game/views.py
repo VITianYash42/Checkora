@@ -19,6 +19,14 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .engine import ChessGame
 
+def api_error(message, status_code=400, details=None):
+    """Utility to standardize JSON error responses across the API."""
+    return JsonResponse({
+        "status": "error",
+        "code": status_code,
+        "message": message,
+        "details": details or {}
+    }, status=status_code)
 
 @ensure_csrf_cookie
 def index(request):
@@ -39,11 +47,9 @@ def make_move(request):
         to_row = int(data['to_row'])
         to_col = int(data['to_col'])
         promotion_piece = data.get('promotion_piece', None)
-    except (json.JSONDecodeError, KeyError, ValueError, TypeError):
-        return JsonResponse(
-            {'valid': False, 'message': 'Invalid request data.'},
-            status=400,
-        )
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
+        # REPLACE OLD JSONRESPONSE
+        return api_error('Invalid request data.', status_code=400, details={"error": str(e)})
 
     game_data = request.session.get('game')
     game = ChessGame.from_dict(game_data) if game_data else ChessGame()
@@ -79,11 +85,11 @@ def valid_moves(request):
     try:
         row = int(request.GET['row'])
         col = int(request.GET['col'])
-    except (KeyError, ValueError, TypeError):
-        return JsonResponse({'valid_moves': []}, status=400)
+    except (KeyError, ValueError, TypeError) as e:
+        return api_error('Missing or invalid row/col parameters.', status_code=400)
 
     if not (0 <= row < 8 and 0 <= col < 8):
-        return JsonResponse({'valid_moves': []}, status=400)
+        return api_error('Coordinates out of bounds.', status_code=400)
 
     game_data = request.session.get('game')
     if not game_data:
@@ -228,18 +234,12 @@ def ai_move(request):
     """Let the engine compute and play the best move for the current side."""
     game_data = request.session.get('game')
     if not game_data:
-        err_msg = 'No active game.'
-        return JsonResponse(
-            {'valid': False, 'message': err_msg}, status=400
-        )
+        return api_error('No active game.', status_code=400)
 
     game = ChessGame.from_dict(game_data)
 
     if game.mode != 'ai':
-        err_msg = 'Not in AI mode.'
-        return JsonResponse(
-            {'valid': False, 'message': err_msg}, status=400
-        )
+        return api_error('Not in AI mode.', status_code=400)
 
     # Depth Mapping
     difficulty = request.session.get('difficulty', 'medium')
@@ -287,10 +287,7 @@ def offer_draw(request):
     """Handle draw offers and agreements."""
     game_data = request.session.get('game')
     if not game_data:
-        err_msg = 'No active game.'
-        return JsonResponse(
-            {'success': False, 'message': err_msg}, status=400
-        )
+        return api_error('No active game.', status_code=400)
 
     data = json.loads(request.body or '{}')
     action = data.get('action')  # 'offer' or 'accept'
@@ -309,8 +306,7 @@ def resign_game(request):
     """Handle a player resigning the game."""
     game_data = request.session.get('game')
     if not game_data:
-        err_msg = 'No active game.'
-        return JsonResponse({'valid': False, 'message': err_msg}, status=400)
+        return api_error('No active game.', status_code=400)
 
     game = ChessGame.from_dict(game_data)
 

@@ -404,7 +404,8 @@ class AIMoveTest(TestCase):
     def test_ai_requires_ai_mode(self):
         r = self.client.post('/api/ai-move/', content_type='application/json')
         self.assertEqual(r.status_code, 400)
-        self.assertFalse(r.json()['valid'])
+        self.assertEqual(r.json()['status'], 'error')
+        self.assertEqual(r.json()['message'], 'Not in AI mode.')
 
     def test_ai_makes_move(self):
         self.client.post(

@@ -429,6 +429,11 @@
                     if (promotionPiece) body.promotion_piece = promotionPiece;
 
                     const data = await post('/api/move/', body);
+                    if (data.status === 'error') {
+                        showStatus(data.message, true);
+                        deselect();
+                        return;
+                    }
                     if (data.valid) {
                         board = parseBoard(data.board);
                         turn = data.current_turn;
@@ -478,6 +483,10 @@
                 showStatus('AI is thinking...', false);
                 try {
                     const data = await post('/api/ai-move/', {});
+                    if (data.status === 'error') {
+                        showStatus(data.message, true);
+                        return;
+                    }
                     if (data.valid) {
                         const mv = data.ai_move;
                         board = parseBoard(data.board);
