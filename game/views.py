@@ -115,7 +115,6 @@ def new_game(request):
 
     request.session["white_name"] = data.get("white_name", "White")
     request.session["black_name"] = data.get("black_name", "Black")
-    player_color = data.get("player_color", "white")
     request.session["difficulty"] = difficulty
     request.session["player_color"] = player_color
 
